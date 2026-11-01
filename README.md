@@ -1,4 +1,4 @@
-<img width="1863" height="925" alt="image" src="https://github.com/user-attachments/assets/e38a2f9b-731f-434e-bf3c-b90f82bbccfa" /># 搭建 Match · 产品演示 Demo
+# 搭建 Match · 产品演示 Demo
 
 > 面向在校大学生的项目组队与协作平台。本仓库包含 **用户端 App** 与 **平台管理端** 两套可直接运行的前端演示程序。
 
@@ -18,7 +18,7 @@ python -m http.server 5173
 | 演示 | 访问地址 | 说明 |
 | --- | --- | --- |
 | 用户端 App | https://match-platform-user-app-5y34.vercel.app/ | 移动端 390 × 844 手机壳预览 |
-| 平台管理端 | http://localhost:5173/admin-console/admin.html | PC 端 1280 宽屏，需登录 |
+| 平台管理端 | [http://localhost:5173/admin-console/admin.html](https://match-platform-admin-console-efkt.vercel.app/) | PC 端 1280 宽屏，需登录 |
 
 Windows 用户也可以直接运行：
 
