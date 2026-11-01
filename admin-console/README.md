@@ -61,3 +61,23 @@ http://localhost:5173/admin-console/admin.html
 - 通知铃铛：下拉面板、未读红点、全部已读；
 - 管理员头像：个人信息 / 修改密码 / 退出登录；
 - 退出登录：清空登录态并替换路由到登录页。
+
+## Vercel 部署
+
+本项目是纯静态页面，无需构建：
+
+| 配置项 | 值 |
+| --- | --- |
+| Root Directory | `admin-console` |
+| Framework Preset | `Other` |
+| Build Command | 留空 |
+| Output Directory | 留空 |
+| Install Command | 留空 |
+
+入口文件是 `admin.html`，因此根路径 `/` 需要通过 `vercel.json` 重写（仓库已内置）：
+
+```json
+{ "rewrites": [{ "source": "/", "destination": "/admin.html" }] }
+```
+
+部署后访问 `/` 或 `/admin.html` 都可以打开后台。
