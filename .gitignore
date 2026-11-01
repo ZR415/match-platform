@@ -21,9 +21,9 @@ desktop.ini
 ~$*
 
 # ---------- 演示必需文件（显式保留） ----------
-!index.html
-!index-shell.html
-!admin.html
-!src/
-!src/**
-!start.ps1
+!user-app/index.html
+!user-app/index-shell.html
+!user-app/src/
+!user-app/src/**
+!admin-console/admin.html
+!scripts/
