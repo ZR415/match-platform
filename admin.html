@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1280" />
+<title>搭子Match · 运营管理后台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: '#2F6B4F',
+          'brand-dark': '#22503A',
+          'brand-soft': '#E8F0EB',
+        },
+      }
+    }
+  }
+</script>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
+<style>
+  html, body { margin: 0; }
+  body { background: #F3F4F6; font-family: -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC", "Microsoft YaHei", sans-serif; -webkit-font-smoothing: antialiased; }
+  input, textarea, select, button { font-family: inherit; }
+  textarea { resize: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #D6DBE0; border-radius: 8px; }
+  .fade-in { animation: fadeIn .22s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .scale-in { animation: scaleIn .18s ease; }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, createContext, useContext } = React;
+
+/* ============ 图标（复用 lucide UMD，兼容两种节点结构） ============ */
+const ICON_ALIAS = {
+  'alert-triangle': 'TriangleAlert',
+  'alert-circle': 'CircleAlert',
+  'check-circle': 'CircleCheck',
+  'bar-chart': 'ChartColumn',
+  'pie-chart': 'ChartPie',
+  'trending-up': 'TrendingUp',
+  'file-check': 'FileCheck',
+};
+const pascal = (s) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+
+const Icon = ({ name, size = 18, className = '', fill = false }) => {
+  const icons = (typeof lucide !== 'undefined' && lucide.icons) || {};
+  const key = ICON_ALIAS[name] || pascal(name);
+  const node = icons[key] || icons[pascal(name)] || null;
+
+  let list = [];
+  if (node) {
+    if (Array.isArray(node) && node[0] === 'svg' && Array.isArray(node[2])) list = node[2];
+    else if (Array.isArray(node) && typeof node[0] === 'string') list = [node];
+    else if (Array.isArray(node)) list = node;
+  }
+  const children = list
+    .filter(c => Array.isArray(c) && typeof c[0] === 'string')
+    .map((c, i) => React.createElement(c[0], { key: i, ...(c[1] || {}) }));
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}
+      fill={fill ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8"
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0 }}>
+      {children.length > 0 ? children : <circle cx="12" cy="12" r="4" opacity="0.35" />}
+    </svg>
+  );
+};
+
+/* ============ Mock 数据 ============ */
+const USERS_INIT = [
+  { id: 'U1001', name: '林小满', school: '成都信息工程大学', major: '软件工程', rating: 4.9, posts: 6, status: '正常', joined: '2025-03-12' },
+  { id: 'U1002', name: '陈墨', school: '电子科技大学', major: '计算机科学', rating: 4.8, posts: 4, status: '正常', joined: '2025-04-02' },
+  { id: 'U1003', name: '王一诺', school: '四川大学', major: '电子信息', rating: 4.7, posts: 3, status: '正常', joined: '2025-04-18' },
+  { id: 'U1004', name: '苏小棠', school: '西南交通大学', major: '工业设计', rating: 5.0, posts: 5, status: '正常', joined: '2025-05-06' },
+  { id: 'U1005', name: '周子航', school: '四川大学', major: '数学与应用数学', rating: 4.9, posts: 2, status: '正常', joined: '2025-05-21' },
+  { id: 'U1006', name: '何嘉', school: '电子科技大学', major: '通信工程', rating: 4.6, posts: 3, status: '正常', joined: '2025-06-09' },
+  { id: 'U1007', name: '唐果', school: '成都信息工程大学', major: '软件工程', rating: 4.8, posts: 7, status: '正常', joined: '2025-06-27' },
+  { id: 'U1008', name: '沈知', school: '西南交通大学', major: '统计学', rating: 4.9, posts: 4, status: '正常', joined: '2025-07-14' },
+  { id: 'U1009', name: '江野', school: '成都信息工程大学', major: '人工智能', rating: 4.5, posts: 9, status: '正常', joined: '2025-08-03' },
+  { id: 'U1010', name: '罗一', school: '四川大学', major: '工商管理', rating: 4.6, posts: 5, status: '已封禁', joined: '2025-08-19' },
+];
+
+const POSTS_INIT = [
+  { id: 'P2001', title: '急缺一名前端，大创项目已经立项', cat: '大创项目', author: '林小满', views: 128, replies: 32, status: '正常', time: '2 小时前' },
+  { id: 'P2002', title: '寻算法大佬，一起冲蓝桥杯省一', cat: '蓝桥杯', author: '陈墨', views: 236, replies: 48, status: '正常', time: '5 小时前' },
+  { id: 'P2003', title: '智能农业项目补一名后端同学', cat: '互联网+', author: '王一诺', views: 96, replies: 21, status: '正常', time: '昨天' },
+  { id: 'P2004', title: '无障碍出行项目招募 UI 设计', cat: '挑战杯', author: '苏小棠', views: 187, replies: 39, status: '正常', time: '昨天' },
+  { id: 'P2005', title: '国赛在即，缺一名论文写作', cat: '数学建模', author: '周子航', views: 154, replies: 27, status: '正常', time: '2 天前' },
+  { id: 'P2006', title: '硬件组补两人，PCB 已画好', cat: '电子设计', author: '何嘉', views: 88, replies: 15, status: '正常', time: '3 天前' },
+  { id: 'P2007', title: '校园团购小程序找技术合伙人', cat: '创业项目', author: '罗一', views: 312, replies: 74, status: '已下架', time: '3 天前' },
+  { id: 'P2008', title: '大模型方向科研，招数据标注同学', cat: '科研项目', author: '许愿', views: 143, replies: 25, status: '正常', time: '4 天前' },
+  { id: 'P2009', title: '我会前端，求一个靠谱队伍带飞', cat: '大创项目', author: '唐果', views: 201, replies: 44, status: '正常', time: '4 小时前' },
+  { id: 'P2010', title: '算法小白求组队，一起打卡刷题', cat: '蓝桥杯', author: '赵一鸣', views: 176, replies: 38, status: '正常', time: '6 小时前' },
+];
+
+const REPORTS_INIT = [
+  {
+    id: 'R-1024', reporter: '林小满', target: '唐果', type: '骚扰辱骂', time: '2 小时前', status: '待处理',
+    desc: '对方在私聊中多次发送带攻击性的语音与文字，并提出线下见面要求，已截图留存。',
+    post: '急缺一名前端，大创项目已经立项',
+    evidence: ['私聊截图 1', '私聊截图 2', '主页信息截图'],
+  },
+  {
+    id: 'R-1023', reporter: '陈墨', target: '江野', type: '发布虚假信息', time: '5 小时前', status: '待处理',
+    desc: '帖子中声称已有省级立项与导师背书，实际核实并不存在，疑似以组队名义套取作品。',
+    post: '蓝桥杯省一，找两名队友冲国赛',
+    evidence: ['帖子截图', '聊天截图 1', '材料核对截图'],
+  },
+  {
+    id: 'R-1022', reporter: '苏小棠', target: '罗一', type: '涉嫌骗取费用', time: '昨天', status: '待处理',
+    desc: '以「内推商赛名额」为由要求先转账 299 元报名费，收款后失联。',
+    post: '校外商赛内推名额，先到先得',
+    evidence: ['转账截图', '聊天截图 1', '聊天截图 2'],
+  },
+  {
+    id: 'R-1021', reporter: '王一诺', target: '白露', type: '内容违规', time: '昨天', status: '已处理',
+    desc: '帖子正文包含导流外部群二维码。',
+    post: '校内二手交易群，扫码进群',
+    evidence: ['帖子截图', '二维码截图'],
+  },
+  {
+    id: 'R-1020', reporter: '周子航', target: '赵一鸣', type: '恶意差评', time: '2 天前', status: '已处理',
+    desc: '合作未开始即给出 1 星差评并附负面描述。',
+    post: '蓝桥杯冲省一，组队中',
+    evidence: ['评价截图', '聊天截图 1'],
+  },
+  {
+    id: 'R-1019', reporter: '何嘉', target: '许愿', type: '冒充身份', time: '3 天前', status: '已处理',
+    desc: '账号资料中使用他人学生证照片冒充在校生。',
+    post: '有偿代写课程论文，价格可谈',
+    evidence: ['资料截图', '证件截图'],
+  },
+];
+
+const APPEALS_INIT = [
+  {
+    id: 'A-301', user: '江野', from: '顾南', stars: 1, time: '3 小时前', status: '待处理',
+    review: '全程不回消息，临近截止才说做不了，浪费了我们两周时间，非常不推荐。',
+    appeal: '本人因家庭突发情况有三天无法上线，已提前在群里说明并交付了数据标注进度，对方描述与事实不符。',
+    related: '大创项目 · 智能农业监测',
+  },
+  {
+    id: 'A-302', user: '罗一', from: '白露', stars: 2, time: '昨天', status: '待处理',
+    review: '沟通效率低，需求反复变更，最后交付质量一般。',
+    appeal: '需求变更均由对方提出，每次都有聊天记录确认；交付文件已通过对方验收，附验收截图。',
+    related: '商赛 · 市场调研外包',
+  },
+  {
+    id: 'A-303', user: '白露', from: '陈墨', stars: 3, time: '昨天', status: '待处理',
+    review: '设计稿改了三版还是不满意，态度也不好。',
+    appeal: '评价中包含「态度不好」等主观人身评价，且第三版已按对方意见修改并通过，希望撤销该差评。',
+    related: '挑战杯 · 无障碍出行',
+  },
+  {
+    id: 'A-304', user: '赵一鸣', from: '周子航', stars: 1, time: '2 天前', status: '已处理',
+    review: '完全没参与，挂名混证书。',
+    appeal: '本人并未加入该队伍，对方评价对象有误，请核实后删除。',
+    related: '数学建模 · 国赛',
+  },
+  {
+    id: 'A-305', user: '许愿', from: '唐果', stars: 2, time: '3 天前', status: '已处理',
+    review: '答应的材料一拖再拖，最后只交了一半。',
+    appeal: '交付延期因对方提供的原始资料缺失，已沟通确认；最终材料已补齐并通过验收。',
+    related: '科研项目 · 多模态数据清洗',
+  },
+];
+
+const PENDING_INIT = [
+  {
+    id: 'C-501', title: '急招！大创缺一个会 Python 的队友', author: '江野', cat: '大创项目', time: '10 分钟前',
+    tags: ['大创', 'Python', '数据分析'],
+    body: '我们做的是校园能耗数据分析，已有两轮调研数据，缺一位会 Python 做数据清洗与可视化的同学。每周投入 8 小时左右，可以一起冲校级立项。',
+  },
+  {
+    id: 'C-502', title: '有偿代写课程论文，价格可谈', author: '罗一', cat: '其他', time: '25 分钟前',
+    tags: ['代写', '有偿'],
+    body: '可代写各专业课程论文与实验报告，价格 200 起，支持加急，先付定金。需要的同学私聊。',
+  },
+  {
+    id: 'C-503', title: '蓝桥杯省一，找两名队友冲国赛', author: '陈墨', cat: '蓝桥杯', time: '40 分钟前',
+    tags: ['蓝桥杯', '算法竞赛', 'C++'],
+    body: '去年省一，今年目标是国赛。已有两人固定训练，每周两次线上讲题，希望再补两名刷题量 300 以上的同学。',
+  },
+  {
+    id: 'C-504', title: '校内二手交易群，扫码进群', author: '许愿', cat: '其他', time: '1 小时前',
+    tags: ['二手交易', '群聊'],
+    body: '校内二手交易群，闲置教材、电子产品都可以出，扫码进群，长期有效。',
+  },
+  {
+    id: 'C-505', title: '求一位 UI 设计，商赛冲国奖', author: '白露', cat: '商赛', time: '2 小时前',
+    tags: ['商赛', 'UI设计', '路演'],
+    body: '商赛进入复赛，缺一位能做产品视觉与路演 PPT 的设计同学，已有完整商业计划书与调研数据。',
+  },
+];
+
+/* ============ 全局数据 & 路由 ============ */
+const DataCtx = createContext(null);
+const useData = () => useContext(DataCtx);
+
+const RouteCtx = createContext({ path: '/login', navigate: () => {} });
+const useRoute = () => useContext(RouteCtx);
+
+const getPath = () => {
+  const h = window.location.hash.replace(/^#/, '');
+  return h || '/login';
+};
+
+const NAV = [
+  { path: '/dashboard', label: '数据看板', icon: 'layout-dashboard', desc: '平台核心指标概览' },
+  { path: '/audit', label: '审核中心', icon: 'shield-check', desc: '举报、申诉与内容审核' },
+  { path: '/users', label: '用户管理', icon: 'users', desc: '用户账号与信誉管理' },
+  { path: '/posts', label: '帖子管理', icon: 'file-text', desc: '帖子内容与上下架管理' },
+];
+
+/* ============ 通用组件 ============ */
+const Card = ({ className = '', children }) => (
+  <div className={`bg-white rounded-xl shadow-sm ${className}`}>{children}</div>
+);
+
+const Badge = ({ tone = 'gray', children }) => {
+  const map = {
+    gray: 'bg-gray-100 text-gray-600',
+    green: 'bg-emerald-50 text-emerald-700',
+    red: 'bg-red-50 text-red-600',
+    amber: 'bg-amber-50 text-amber-700',
+    blue: 'bg-blue-50 text-blue-700',
+  };
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${map[tone]}`}>{children}</span>;
+};
+
+const Modal = ({ open, title, subtitle, onClose, children, footer, width = 'max-w-md' }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className={`relative w-full ${width} bg-white rounded-2xl shadow-2xl flex flex-col max-h-[86vh] scale-in`}>
+        <div className="flex items-start justify-between px-6 pt-5 pb-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="p-1.5 -mr-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+        <div className="px-6 pb-5 overflow-y-auto">{children}</div>
+        {footer && <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex items-center justify-end gap-3">{footer}</div>}
+      </div>
+    </div>
+  );
+};
+
+const Toast = ({ msg, type }) => {
+  if (!msg) return null;
+  const icon = type === 'error' ? 'circle-alert' : 'circle-check';
+  const color = type === 'error' ? 'text-red-400' : 'text-emerald-400';
+  return (
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] fade-in">
+      <div className="bg-slate-900/92 text-white text-sm px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 whitespace-nowrap">
+        <Icon name={icon} size={15} className={color} />
+        {msg}
+      </div>
+    </div>
+  );
+};
+
+/* ============ 登录页 ============ */
+const LoginPage = ({ onLogin }) => {
+  const [account, setAccount] = useState('admin');
+  const [pwd, setPwd] = useState('admin123');
+  const [err, setErr] = useState('');
+
+  const submit = () => {
+    if (!account.trim() || !pwd.trim()) { setErr('请输入账号和密码'); return; }
+    setErr('');
+    onLogin();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4"
+      style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, #E8F0EB 0, transparent 45%), radial-gradient(circle at 85% 75%, #E6EDF6 0, transparent 40%)' }}>
+      <div className="w-full max-w-[420px]">
+        <div className="flex flex-col items-center mb-7">
+          <div className="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-3">搭</div>
+          <div className="text-xl font-bold text-gray-900 tracking-tight">搭子Match · 运营管理后台</div>
+          <div className="text-xs text-gray-500 mt-1.5">Campus Teammate Matching Console</div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-7">
+          <div className="text-sm font-semibold text-gray-900 mb-1">登录后台</div>
+          <div className="text-xs text-gray-500 mb-5">请使用运营账号登录，演示环境请勿填写真实信息</div>
+
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">账号</label>
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5 mb-4 focus-within:ring-2 focus-within:ring-brand/20">
+            <Icon name="user" size={16} className="text-gray-400" />
+            <input value={account} onChange={e => { setAccount(e.target.value); setErr(''); }}
+              placeholder="请输入运营账号"
+              className="flex-1 bg-transparent text-sm text-gray-800 focus:outline-none" />
+          </div>
+
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">密码</label>
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5 focus-within:ring-2 focus-within:ring-brand/20">
+            <Icon name="lock" size={16} className="text-gray-400" />
+            <input value={pwd} onChange={e => { setPwd(e.target.value); setErr(''); }}
+              type="password" placeholder="请输入密码"
+              onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+              className="flex-1 bg-transparent text-sm text-gray-800 focus:outline-none" />
+          </div>
+
+          {err && (
+            <div className="text-xs text-red-500 mt-3 flex items-center gap-1">
+              <Icon name="alert-circle" size={12} /> {err}
+            </div>
+          )}
+
+          <button onClick={submit}
+            className="w-full mt-5 bg-brand hover:bg-brand-dark text-white py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all active:scale-[0.99]">
+            登录
+          </button>
+
+          <div className="text-[11px] text-gray-400 mt-4 text-center">演示账号 admin / admin123</div>
+        </div>
+
+        <div className="text-center text-[11px] text-gray-400 mt-6">© 2025 搭子Match 运营中心 · 仅用于内部演示</div>
+      </div>
+    </div>
+  );
+};
+
+/* ============ 布局：侧边栏 + 顶栏 ============ */
+const Layout = ({ children, onLogout }) => {
+  const { path, navigate } = useRoute();
+  const current = NAV.find(n => path.startsWith(n.path)) || NAV[0];
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* 侧边栏 */}
+      <aside className="fixed inset-y-0 left-0 w-60 bg-slate-900 flex flex-col z-30">
+        <div className="h-16 flex items-center gap-2.5 px-5">
+          <div className="w-9 h-9 rounded-lg bg-brand flex items-center justify-center text-white font-bold">搭</div>
+          <div>
+            <div className="text-sm font-semibold text-white leading-tight">搭子Match</div>
+            <div className="text-[10px] text-slate-500 tracking-wide">运营管理后台</div>
+          </div>
+        </div>
+
+        <div className="px-3 mt-2 flex-1">
+          <div className="px-3 text-[10px] font-medium text-slate-500 tracking-wider mb-2">内容运营</div>
+          <nav className="space-y-1">
+            {NAV.map(item => {
+              const active = path.startsWith(item.path);
+              return (
+                <button key={item.path} onClick={() => navigate(item.path)}
+                  className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-colors ${active ? 'bg-slate-800 text-white font-medium' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r ${active ? 'h-5 bg-emerald-400' : 'h-0'}`} />
+                  <Icon name={item.icon} size={17} className={active ? 'text-emerald-400' : 'text-slate-500'} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="px-3 text-[10px] font-medium text-slate-500 tracking-wider mt-6 mb-2">系统</div>
+          <button onClick={() => onLogout()}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition-colors">
+            <Icon name="log-out" size={17} className="text-slate-500" />
+            退出登录
+          </button>
+        </div>
+
+        <div className="p-3">
+          <div className="bg-slate-800/70 rounded-xl p-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs font-semibold">管</div>
+              <div className="min-w-0">
+                <div className="text-xs text-white font-medium truncate">运营管理员</div>
+                <div className="text-[10px] text-slate-400 truncate">admin@dazi.match</div>
+              </div>
+            </div>
+            <div className="text-[10px] text-slate-500 mt-2.5">Demo v1.0 · 数据均为模拟</div>
+          </div>
+        </div>
+      </aside>
+
+      {/* 主区域 */}
+      <div className="pl-60">
+        <header className="sticky top-0 z-20 h-16 bg-white border-b border-gray-200 flex items-center px-8">
+          <div className="flex items-center gap-2 text-[13px]">
+            <span className="text-gray-400">首页</span>
+            <Icon name="chevron-right" size={13} className="text-gray-300" />
+            <span className="text-gray-800 font-medium">{current.label}</span>
+          </div>
+          <div className="ml-4 text-xs text-gray-400 hidden xl:block">{current.desc}</div>
+
+          <div className="ml-auto flex items-center gap-3">
+            <button className="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors">
+              <Icon name="bell" size={18} />
+            </button>
+            <div className="h-6 w-px bg-gray-200" />
+            <div className="flex items-center gap-2.5 pl-1">
+              <div className="w-8 h-8 rounded-full bg-brand-soft text-brand flex items-center justify-center text-xs font-semibold">管</div>
+              <div className="leading-tight">
+                <div className="text-xs font-medium text-gray-800">运营管理员</div>
+                <div className="text-[10px] text-gray-400">超级管理员</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-8">{children}</main>
+      </div>
+    </div>
+  );
+};
+
+/* ============ 数据看板 ============ */
+const StatCard = ({ label, value, delta, icon, tone, hint }) => (
+  <Card className="p-5">
+    <div className="flex items-start justify-between">
+      <div>
+        <div className="text-xs text-gray-500">{label}</div>
+        <div className="text-2xl font-bold text-gray-900 mt-2 tracking-tight">{value}</div>
+      </div>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${tone}`}>
+        <Icon name={icon} size={18} />
+      </div>
+    </div>
+    <div className="flex items-center gap-1.5 mt-3">
+      {delta ? (
+        <>
+          <Icon name="trending-up" size={13} className="text-emerald-600" />
+          <span className="text-xs text-emerald-600 font-medium">{delta}</span>
+        </>
+      ) : (
+        <Icon name="clock" size={13} className="text-amber-500" />
+      )}
+      <span className="text-xs text-gray-400">{hint}</span>
+    </div>
+  </Card>
+);
+
+const DashboardPage = () => {
+  const series = [72, 95, 68, 120, 108, 150, 132];
+  const labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  const W = 620, H = 220, PAD = 34, MAX = 170;
+
+  const points = series.map((v, i) => {
+    const x = PAD + i * (W - PAD * 2) / (series.length - 1);
+    const y = H - PAD - (v / MAX) * (H - PAD * 2);
+    return [x, y];
+  });
+  const line = points.map(p => p.join(',')).join(' ');
+  const area = `M ${points[0][0]},${H - PAD} ` + points.map(p => `L ${p[0]},${p[1]}`).join(' ') + ` L ${points[points.length - 1][0]},${H - PAD} Z`;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">数据看板</h1>
+        <p className="text-sm text-gray-500 mt-1">今日平台运营概览 · 数据更新于 2025-11-01 10:32</p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-5">
+        <StatCard label="今日活跃用户" value="12,486" delta="+8.2%" icon="activity" tone="bg-emerald-50 text-emerald-600" hint="较昨日" />
+        <StatCard label="今日新发帖子" value="326" delta="+3.1%" icon="file-plus" tone="bg-blue-50 text-blue-600" hint="较昨日" />
+        <StatCard label="待处理举报" value="12" delta="" icon="shield-alert" tone="bg-amber-50 text-amber-600" hint="需在 24 小时内处理" />
+        <StatCard label="待处理申诉" value="5" delta="" icon="message-square-warning" tone="bg-red-50 text-red-500" hint="平均处理时长 6.4h" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-5">
+        <Card className="col-span-2 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">近 7 日活跃趋势</div>
+              <div className="text-xs text-gray-400 mt-0.5">单位：百人次（Mock 数据）</div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-brand" />
+              <span className="text-xs text-gray-500">日活跃</span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 232 }}>
+              <defs>
+                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2F6B4F" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#2F6B4F" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              {[0, 1, 2, 3].map(i => (
+                <line key={i} x1={PAD} x2={W - PAD} y1={PAD + i * (H - PAD * 2) / 3} y2={PAD + i * (H - PAD * 2) / 3}
+                  stroke="#EEF1F3" strokeWidth="1" />
+              ))}
+              <path d={area} fill="url(#areaFill)" />
+              <polyline points={line} fill="none" stroke="#2F6B4F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+              {points.map((p, i) => (
+                <g key={i}>
+                  <circle cx={p[0]} cy={p[1]} r="4.5" fill="#fff" stroke="#2F6B4F" strokeWidth="2.4" />
+                  <text x={p[0]} y={H - 8} textAnchor="middle" fontSize="11" fill="#9CA3AF">{labels[i]}</text>
+                </g>
+              ))}
+            </svg>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="text-sm font-semibold text-gray-900">帖子类型分布</div>
+          <div className="text-xs text-gray-400 mt-0.5">本周新增 1,842 条</div>
+
+          <div className="flex items-center justify-center mt-6">
+            <div className="relative w-36 h-36 rounded-full"
+              style={{ background: 'conic-gradient(#2F6B4F 0 42%, #10B981 42% 70%, #60A5FA 70% 88%, #FBBF24 88% 100%)' }}>
+              <div className="absolute inset-[22px] bg-white rounded-full flex flex-col items-center justify-center">
+                <div className="text-lg font-bold text-gray-900">1,842</div>
+                <div className="text-[10px] text-gray-400">总帖子</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-2.5">
+            {[
+              { c: '#2F6B4F', n: '队伍招募', v: '42%' },
+              { c: '#10B981', n: '个人寻伴', v: '28%' },
+              { c: '#60A5FA', n: '经验交流', v: '18%' },
+              { c: '#FBBF24', n: '其他', v: '12%' },
+            ].map(it => (
+              <div key={it.n} className="flex items-center gap-2 text-xs">
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: it.c }} />
+                <span className="text-gray-600 flex-1">{it.n}</span>
+                <span className="text-gray-400">{it.v}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-3 gap-5">
+        <Card className="p-6 col-span-2">
+          <div className="text-sm font-semibold text-gray-900 mb-4">热门竞赛方向</div>
+          <div className="space-y-3.5">
+            {[
+              { n: '大创项目', v: 86, c: 'bg-brand' },
+              { n: '蓝桥杯', v: 64, c: 'bg-emerald-500' },
+              { n: '挑战杯', v: 52, c: 'bg-blue-500' },
+              { n: '数学建模', v: 38, c: 'bg-amber-400' },
+              { n: '互联网+', v: 31, c: 'bg-slate-400' },
+            ].map(it => (
+              <div key={it.n} className="flex items-center gap-3">
+                <span className="text-xs text-gray-600 w-20 shrink-0">{it.n}</span>
+                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${it.c}`} style={{ width: `${it.v}%` }} />
+                </div>
+                <span className="text-xs text-gray-400 w-8 text-right">{it.v}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="text-sm font-semibold text-gray-900 mb-3">审核任务</div>
+          <div className="space-y-3">
+            {[
+              { n: '投诉举报', v: 12, t: 'amber' },
+              { n: '评价申诉', v: 5, t: 'red' },
+              { n: '内容待审', v: 5, t: 'blue' },
+            ].map(it => (
+              <div key={it.n} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                <span className="text-xs text-gray-600">{it.n}</span>
+                <Badge tone={it.t}>{it.v} 条</Badge>
+              </div>
+            ))}
+          </div>
+          <div className="text-[11px] text-gray-400 mt-3 leading-relaxed">建议优先处理「涉嫌骗取费用」类举报。</div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+/* ============ 审核中心 ============ */
+const AuditPage = () => {
+  const { reports, setReports, appeals, setAppeals, pending, setPending } = useData();
+  const [tab, setTab] = useState('report');
+  const [sel, setSel] = useState({ report: reports[0]?.id, appeal: appeals[0]?.id, content: pending[0]?.id });
+
+  const [banModal, setBanModal] = useState(false);
+  const [banReason, setBanReason] = useState('骚扰辱骂用户');
+  const [banNote, setBanNote] = useState('');
+
+  const TABS = [
+    { k: 'report', label: '投诉举报', count: reports.filter(r => r.status === '待处理').length },
+    { k: 'appeal', label: '评价申诉', count: appeals.filter(a => a.status === '待处理').length },
+    { k: 'content', label: '内容审核', count: pending.length },
+  ];
+
+  const report = reports.find(r => r.id === sel.report) || reports[0];
+  const appeal = appeals.find(a => a.id === sel.appeal) || appeals[0];
+  const content = pending.find(p => p.id === sel.content) || pending[0];
+
+  const closeReport = (r, text) => {
+    setReports(prev => prev.map(x => x.id === r.id ? { ...x, status: '已处理' } : x));
+    setBanModal(false);
+    setBanNote('');
+    setToast(text);
+  };
+
+  const [toast, setToast] = useState('');
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2200); return () => clearTimeout(t); }, [toast]);
+
+  /* ---------- 左栏表格 ---------- */
+  const LeftTable = () => {
+    if (tab === 'report') {
+      return (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500 bg-gray-50">
+              <th className="text-left font-medium px-4 py-2.5">编号</th>
+              <th className="text-left font-medium px-4 py-2.5">被举报人</th>
+              <th className="text-left font-medium px-4 py-2.5">类型</th>
+              <th className="text-left font-medium px-4 py-2.5">状态</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {reports.map(r => (
+              <tr key={r.id} onClick={() => setSel(s => ({ ...s, report: r.id }))}
+                className={`cursor-pointer transition-colors ${sel.report === r.id ? 'bg-brand-soft/70' : 'hover:bg-gray-50'}`}>
+                <td className="px-4 py-3">
+                  <div className="text-xs font-medium text-gray-800">{r.id}</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5">{r.time}</div>
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-700">{r.target}</td>
+                <td className="px-4 py-3"><span className="text-xs text-gray-600">{r.type}</span></td>
+                <td className="px-4 py-3">
+                  <Badge tone={r.status === '待处理' ? 'amber' : 'gray'}>{r.status}</Badge>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    if (tab === 'appeal') {
+      return (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500 bg-gray-50">
+              <th className="text-left font-medium px-4 py-2.5">编号</th>
+              <th className="text-left font-medium px-4 py-2.5">申诉人</th>
+              <th className="text-left font-medium px-4 py-2.5">星级</th>
+              <th className="text-left font-medium px-4 py-2.5">状态</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {appeals.map(a => (
+              <tr key={a.id} onClick={() => setSel(s => ({ ...s, appeal: a.id }))}
+                className={`cursor-pointer transition-colors ${sel.appeal === a.id ? 'bg-brand-soft/70' : 'hover:bg-gray-50'}`}>
+                <td className="px-4 py-3">
+                  <div className="text-xs font-medium text-gray-800">{a.id}</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5">{a.time}</div>
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-700">{a.user}</td>
+                <td className="px-4 py-3">
+                  <span className="text-xs text-amber-500">{'★'.repeat(a.stars)}<span className="text-gray-300">{'★'.repeat(5 - a.stars)}</span></span>
+                </td>
+                <td className="px-4 py-3"><Badge tone={a.status === '待处理' ? 'amber' : 'gray'}>{a.status}</Badge></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    return (
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-xs text-gray-500 bg-gray-50">
+            <th className="text-left font-medium px-4 py-2.5">标题</th>
+            <th className="text-left font-medium px-4 py-2.5">作者</th>
+            <th className="text-left font-medium px-4 py-2.5">分类</th>
+            <th className="text-left font-medium px-4 py-2.5">时间</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {pending.map(p => (
+            <tr key={p.id} onClick={() => setSel(s => ({ ...s, content: p.id }))}
+              className={`cursor-pointer transition-colors ${sel.content === p.id ? 'bg-brand-soft/70' : 'hover:bg-gray-50'}`}>
+              <td className="px-4 py-3 text-xs text-gray-800 max-w-[180px] truncate">{p.title}</td>
+              <td className="px-4 py-3 text-xs text-gray-600">{p.author}</td>
+              <td className="px-4 py-3 text-xs text-gray-500">{p.cat}</td>
+              <td className="px-4 py-3 text-[11px] text-gray-400">{p.time}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
+  /* ---------- 右侧详情 ---------- */
+  const EvidenceBlock = ({ label }) => (
+    <div className="rounded-lg bg-gray-50 h-20 flex flex-col items-center justify-center gap-1 text-gray-400">
+      <Icon name="image" size={18} />
+      <span className="text-[10px]">{label}</span>
+    </div>
+  );
+
+  const ReportDetail = () => (
+    <div className="flex flex-col h-full">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-sm font-semibold text-gray-900">举报详情 {report.id}</div>
+          <div className="text-xs text-gray-400 mt-1">{report.time} · 举报人 {report.reporter}</div>
+        </div>
+        <Badge tone={report.status === '待处理' ? 'amber' : 'gray'}>{report.status}</Badge>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+        <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+          <div className="text-gray-400 mb-1">被举报人</div>
+          <div className="text-gray-800 font-medium">{report.target}</div>
+        </div>
+        <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+          <div className="text-gray-400 mb-1">举报类型</div>
+          <div className="text-gray-800 font-medium">{report.type}</div>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-xs text-gray-400 mb-1.5">关联帖子</div>
+        <div className="text-xs text-gray-700 bg-gray-50 rounded-lg px-3 py-2.5">{report.post}</div>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-xs text-gray-400 mb-1.5">举报说明</div>
+        <div className="text-xs text-gray-600 leading-relaxed bg-gray-50 rounded-lg px-3 py-3">{report.desc}</div>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-xs text-gray-400 mb-1.5">凭证材料</div>
+        <div className="grid grid-cols-3 gap-2">
+          {report.evidence.map(e => <EvidenceBlock key={e} label={e} />)}
+        </div>
+      </div>
+
+      <div className="mt-auto pt-5 flex items-center justify-end gap-3">
+        <button disabled={report.status === '已处理'}
+          onClick={() => closeReport(report, '已忽略该举报')}
+          className="px-4 py-2 rounded-lg text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          忽略
+        </button>
+        <button disabled={report.status === '已处理'}
+          onClick={() => { setBanReason('骚扰辱骂用户'); setBanNote(''); setBanModal(true); }}
+          className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
+          封禁并删帖
+        </button>
+      </div>
+    </div>
+  );
+
+  const AppealDetail = () => (
+    <div className="flex flex-col h-full">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-sm font-semibold text-gray-900">申诉详情 {appeal.id}</div>
+          <div className="text-xs text-gray-400 mt-1">{appeal.related} · {appeal.time}</div>
+        </div>
+        <Badge tone={appeal.status === '待处理' ? 'amber' : 'gray'}>{appeal.status}</Badge>
+      </div>
+
+      <div className="mt-4 rounded-lg bg-red-50/60 px-3 py-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-medium text-red-600">原评价（{appeal.from} 提交）</span>
+          <span className="text-xs text-amber-500">{'★'.repeat(appeal.stars)}</span>
+        </div>
+        <div className="text-xs text-gray-700 leading-relaxed">{appeal.review}</div>
+      </div>
+
+      <div className="mt-3 rounded-lg bg-emerald-50/70 px-3 py-3">
+        <div className="text-xs font-medium text-emerald-700 mb-1.5">申诉理由（{appeal.user} 提交）</div>
+        <div className="text-xs text-gray-700 leading-relaxed">{appeal.appeal}</div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+        <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+          <div className="text-gray-400 mb-1">评价人</div>
+          <div className="text-gray-800 font-medium">{appeal.from}</div>
+        </div>
+        <div className="bg-gray-50 rounded-lg px-3 py-2.5">
+          <div className="text-gray-400 mb-1">申诉人</div>
+          <div className="text-gray-800 font-medium">{appeal.user}</div>
+        </div>
+      </div>
+
+      <div className="mt-auto pt-5 flex items-center justify-end gap-3">
+        <button disabled={appeal.status !== '待处理'}
+          onClick={() => {
+            setAppeals(prev => prev.map(x => x.id === appeal.id ? { ...x, status: '已处理' } : x));
+            setToast('已驳回该申诉');
+          }}
+          className="px-4 py-2 rounded-lg text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          驳回
+        </button>
+        <button disabled={appeal.status !== '待处理'}
+          onClick={() => {
+            setAppeals(prev => prev.map(x => x.id === appeal.id ? { ...x, status: '已处理', stars: 0 } : x));
+            setToast('已撤销该条差评');
+          }}
+          className="px-4 py-2 rounded-lg text-sm text-white bg-brand hover:bg-brand-dark transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">
+          撤销差评
+        </button>
+      </div>
+    </div>
+  );
+
+  const ContentDetail = () => (
+    <div className="flex flex-col h-full">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-sm font-semibold text-gray-900">内容预览 {content.id}</div>
+          <div className="text-xs text-gray-400 mt-1">{content.author} · {content.cat} · {content.time}</div>
+        </div>
+        <Badge tone="blue">待审核</Badge>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-gray-100 px-4 py-4">
+        <div className="text-sm font-semibold text-gray-900 leading-snug">{content.title}</div>
+        <div className="flex flex-wrap gap-1.5 mt-2.5">
+          {content.tags.map(t => (
+            <span key={t} className="text-[11px] bg-[#E8F0EB] text-brand px-2 py-0.5 rounded">#{t}</span>
+          ))}
+        </div>
+        <div className="text-xs text-gray-600 leading-relaxed mt-3 whitespace-pre-line">{content.body}</div>
+      </div>
+
+      <div className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-3 flex items-start gap-1.5">
+        <Icon name="alert-triangle" size={13} className="mt-0.5" />
+        系统提示：该内容命中「代写/有偿」敏感词，建议人工复核。
+      </div>
+
+      <div className="mt-auto pt-5 flex items-center justify-end gap-3">
+        <button
+          onClick={() => {
+            setPending(prev => prev.filter(x => x.id !== content.id));
+            setSel(s => ({ ...s, content: pending.filter(x => x.id !== content.id)[0]?.id }));
+            setToast('已下架该帖子');
+          }}
+          className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm">
+          下架
+        </button>
+        <button
+          onClick={() => {
+            setPending(prev => prev.filter(x => x.id !== content.id));
+            setSel(s => ({ ...s, content: pending.filter(x => x.id !== content.id)[0]?.id }));
+            setToast('审核通过，已发布');
+          }}
+          className="px-4 py-2 rounded-lg text-sm text-white bg-brand hover:bg-brand-dark transition-colors shadow-sm">
+          通过
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">审核中心</h1>
+        <p className="text-sm text-gray-500 mt-1">处理用户举报、评价申诉与内容审核任务</p>
+      </div>
+
+      <Card>
+        <div className="flex items-center gap-6 px-6 border-b border-gray-100">
+          {TABS.map(t => (
+            <button key={t.k} onClick={() => setTab(t.k)}
+              className={`relative py-3.5 text-sm transition-colors ${tab === t.k ? 'text-brand font-semibold' : 'text-gray-500 hover:text-gray-800'}`}>
+              {t.label}
+              <span className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded ${tab === t.k ? 'bg-brand-soft text-brand' : 'bg-gray-100 text-gray-400'}`}>{t.count}</span>
+              {tab === t.k && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-brand rounded" />}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-[1.05fr_0.95fr]">
+          <div className="border-r border-gray-100 overflow-auto max-h-[calc(100vh-300px)]">
+            <LeftTable />
+          </div>
+          <div className="p-6 overflow-auto max-h-[calc(100vh-300px)]">
+            {tab === 'report' && report && <ReportDetail />}
+            {tab === 'appeal' && appeal && <AppealDetail />}
+            {tab === 'content' && content && <ContentDetail />}
+            {tab === 'content' && !content && (
+              <div className="h-full flex flex-col items-center justify-center text-gray-400 py-20">
+                <Icon name="check-circle" size={30} className="mb-2" />
+                <div className="text-xs">审核队列已清空</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Modal
+        open={banModal}
+        title="封禁并删帖"
+        subtitle={`确认对「${report ? report.target : ''}」执行封禁，并删除关联帖子`}
+        onClose={() => setBanModal(false)}
+        footer={
+          <>
+            <button onClick={() => setBanModal(false)}
+              className="px-4 py-2 rounded-lg text-sm text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors">取消</button>
+            <button
+              onClick={() => {
+                if (!banNote.trim()) { setToast('请填写处理备注'); return; }
+                closeReport(report, '已封禁用户并删除帖子');
+              }}
+              className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm">确认封禁</button>
+          </>
+        }
+      >
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">处理原因</label>
+        <select value={banReason} onChange={e => setBanReason(e.target.value)}
+          className="w-full bg-gray-50 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand/20 mb-4">
+          {['骚扰辱骂用户', '发布虚假信息', '涉嫌骗取费用', '内容违规', '冒充他人身份', '其他'].map(r => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">处理备注</label>
+        <textarea value={banNote} onChange={e => setBanNote(e.target.value)} rows={3}
+          placeholder="请补充处理依据，将同步记录到操作日志"
+          className="w-full bg-gray-50 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+      </Modal>
+    </div>
+  );
+};
+
+/* ============ 用户管理 ============ */
+const UsersPage = () => {
+  const { users, setUsers } = useData();
+  const [kw, setKw] = useState('');
+  const [target, setTarget] = useState(null);
+  const [reason, setReason] = useState('');
+  const [toast, setToast] = useState('');
+
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2200); return () => clearTimeout(t); }, [toast]);
+
+  const list = users.filter(u => kw.trim() === '' || (u.name + u.school + u.major + u.id).toLowerCase().includes(kw.trim().toLowerCase()));
+
+  const confirm = () => {
+    if (!reason.trim()) { setToast('请填写封禁原因'); return; }
+    setUsers(prev => prev.map(u => u.id === target.id ? { ...u, status: '已封禁' } : u));
+    setTarget(null);
+    setReason('');
+    setToast(`已封禁用户 ${target.name}`);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">用户管理</h1>
+          <p className="text-sm text-gray-500 mt-1">共 {users.length} 位用户，其中 {users.filter(u => u.status === '已封禁').length} 位已封禁</p>
+        </div>
+        <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 w-64 shadow-sm focus-within:ring-2 focus-within:ring-brand/20">
+          <Icon name="search" size={16} className="text-gray-400" />
+          <input value={kw} onChange={e => setKw(e.target.value)} placeholder="搜索姓名 / 学校 / 专业"
+            className="flex-1 bg-transparent text-sm text-gray-800 focus:outline-none" />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-xs text-gray-500">
+              <th className="text-left font-medium px-5 py-3">用户</th>
+              <th className="text-left font-medium px-5 py-3">学校 / 专业</th>
+              <th className="text-left font-medium px-5 py-3">信誉分</th>
+              <th className="text-left font-medium px-5 py-3">发帖</th>
+              <th className="text-left font-medium px-5 py-3">状态</th>
+              <th className="text-left font-medium px-5 py-3">注册时间</th>
+              <th className="text-right font-medium px-5 py-3">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {list.map(u => (
+              <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-5 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-brand-soft text-brand flex items-center justify-center text-xs font-semibold">
+                      {u.name.slice(0, 1)}
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-800 font-medium">{u.name}</div>
+                      <div className="text-[11px] text-gray-400">{u.id}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-3.5">
+                  <div className="text-xs text-gray-700">{u.school}</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5">{u.major}</div>
+                </td>
+                <td className="px-5 py-3.5">
+                  <span className="text-xs text-amber-500">{u.rating.toFixed(1)}</span>
+                </td>
+                <td className="px-5 py-3.5 text-xs text-gray-600">{u.posts}</td>
+                <td className="px-5 py-3.5">
+                  <Badge tone={u.status === '正常' ? 'green' : 'red'}>{u.status}</Badge>
+                </td>
+                <td className="px-5 py-3.5 text-xs text-gray-400">{u.joined}</td>
+                <td className="px-5 py-3.5 text-right">
+                  <button disabled={u.status === '已封禁'}
+                    onClick={() => { setTarget(u); setReason(''); }}
+                    className="text-xs px-3 py-1.5 rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:text-gray-300 disabled:bg-gray-50 disabled:cursor-not-allowed">
+                    {u.status === '已封禁' ? '已封禁' : '封禁'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && (
+              <tr><td colSpan="7" className="px-5 py-14 text-center text-xs text-gray-400">没有匹配的用户</td></tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      <Modal
+        open={!!target}
+        title="封禁用户"
+        subtitle={target ? `即将封禁「${target.name}」· ${target.school}` : ''}
+        onClose={() => setTarget(null)}
+        footer={
+          <>
+            <button onClick={() => setTarget(null)}
+              className="px-4 py-2 rounded-lg text-sm text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors">取消</button>
+            <button onClick={confirm}
+              className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm">确认封禁</button>
+          </>
+        }
+      >
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">封禁原因<span className="text-red-500 ml-0.5">*</span></label>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3}
+          placeholder="请填写封禁原因，该记录将同步给用户"
+          className="w-full bg-gray-50 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+        <div className="text-[11px] text-gray-400 mt-2">封禁后该用户将无法登录、发帖与发起沟通。</div>
+      </Modal>
+
+      <Toast msg={toast} type="success" />
+    </div>
+  );
+};
+
+/* ============ 帖子管理 ============ */
+const PostsPage = () => {
+  const { posts, setPosts } = useData();
+  const [kw, setKw] = useState('');
+  const [target, setTarget] = useState(null);
+  const [reason, setReason] = useState('');
+  const [toast, setToast] = useState('');
+
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2200); return () => clearTimeout(t); }, [toast]);
+
+  const list = posts.filter(p => kw.trim() === '' || (p.title + p.author + p.cat).toLowerCase().includes(kw.trim().toLowerCase()));
+
+  const confirm = () => {
+    if (!reason.trim()) { setToast('请填写下架原因'); return; }
+    setPosts(prev => prev.map(p => p.id === target.id ? { ...p, status: '已下架' } : p));
+    setTarget(null);
+    setReason('');
+    setToast(`已下架帖子 ${target.id}`);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">帖子管理</h1>
+          <p className="text-sm text-gray-500 mt-1">共 {posts.length} 条帖子，其中 {posts.filter(p => p.status === '已下架').length} 条已下架</p>
+        </div>
+        <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 w-64 shadow-sm focus-within:ring-2 focus-within:ring-brand/20">
+          <Icon name="search" size={16} className="text-gray-400" />
+          <input value={kw} onChange={e => setKw(e.target.value)} placeholder="搜索标题 / 作者 / 分类"
+            className="flex-1 bg-transparent text-sm text-gray-800 focus:outline-none" />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-xs text-gray-500">
+              <th className="text-left font-medium px-5 py-3">帖子标题</th>
+              <th className="text-left font-medium px-5 py-3">作者</th>
+              <th className="text-left font-medium px-5 py-3">分类</th>
+              <th className="text-left font-medium px-5 py-3">浏览 / 回复</th>
+              <th className="text-left font-medium px-5 py-3">状态</th>
+              <th className="text-left font-medium px-5 py-3">发布时间</th>
+              <th className="text-right font-medium px-5 py-3">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {list.map(p => (
+              <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-5 py-3.5 max-w-[300px]">
+                  <div className="text-sm text-gray-800 font-medium truncate">{p.title}</div>
+                  <div className="text-[11px] text-gray-400 mt-0.5">{p.id}</div>
+                </td>
+                <td className="px-5 py-3.5 text-xs text-gray-700">{p.author}</td>
+                <td className="px-5 py-3.5">
+                  <span className="text-[11px] bg-[#E8F0EB] text-brand px-2 py-0.5 rounded">{p.cat}</span>
+                </td>
+                <td className="px-5 py-3.5 text-xs text-gray-500">{p.views} / {p.replies}</td>
+                <td className="px-5 py-3.5">
+                  <Badge tone={p.status === '正常' ? 'green' : 'gray'}>{p.status}</Badge>
+                </td>
+                <td className="px-5 py-3.5 text-xs text-gray-400">{p.time}</td>
+                <td className="px-5 py-3.5 text-right">
+                  <button disabled={p.status === '已下架'}
+                    onClick={() => { setTarget(p); setReason(''); }}
+                    className="text-xs px-3 py-1.5 rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:text-gray-300 disabled:bg-gray-50 disabled:cursor-not-allowed">
+                    {p.status === '已下架' ? '已下架' : '下架'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && (
+              <tr><td colSpan="7" className="px-5 py-14 text-center text-xs text-gray-400">没有匹配的帖子</td></tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      <Modal
+        open={!!target}
+        title="下架帖子"
+        subtitle={target ? `${target.id} · ${target.title}` : ''}
+        onClose={() => setTarget(null)}
+        footer={
+          <>
+            <button onClick={() => setTarget(null)}
+              className="px-4 py-2 rounded-lg text-sm text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors">取消</button>
+            <button onClick={confirm}
+              className="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm">确认下架</button>
+          </>
+        }
+      >
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">下架原因<span className="text-red-500 ml-0.5">*</span></label>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3}
+          placeholder="请填写下架原因，将用于向作者说明"
+          className="w-full bg-gray-50 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand/20" />
+        <div className="text-[11px] text-gray-400 mt-2">下架后帖子将从广场隐藏，作者可在站内信中查看原因。</div>
+      </Modal>
+
+      <Toast msg={toast} type="success" />
+    </div>
+  );
+};
+
+/* ============ 应用入口 ============ */
+const App = () => {
+  const [path, setPath] = useState(getPath());
+  const [authed, setAuthed] = useState(getPath() !== '/login');
+  const [toastMsg, setToastMsg] = useState('');
+
+  useEffect(() => {
+    const onHash = () => setPath(getPath());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const navigate = (to) => {
+    if (getPath() === to) return;
+    window.location.hash = to;
+    setPath(to);
+  };
+
+  const toast = (msg) => { setToastMsg(msg); };
+
+  useEffect(() => { if (!toastMsg) return; const t = setTimeout(() => setToastMsg(''), 2200); return () => clearTimeout(t); }, [toastMsg]);
+
+  const [users, setUsers] = useState(USERS_INIT);
+  const [posts, setPosts] = useState(POSTS_INIT);
+  const [reports, setReports] = useState(REPORTS_INIT);
+  const [appeals, setAppeals] = useState(APPEALS_INIT);
+  const [pending, setPending] = useState(PENDING_INIT);
+
+  const data = useMemo(() => ({ users, setUsers, posts, setPosts, reports, setReports, appeals, setAppeals, pending, setPending }), [users, posts, reports, appeals, pending]);
+
+  const login = () => {
+    setAuthed(true);
+    navigate('/dashboard');
+  };
+
+  const logout = () => {
+    setAuthed(false);
+    navigate('/login');
+  };
+
+  let screen = null;
+  if (path.startsWith('/dashboard')) screen = <DashboardPage />;
+  else if (path.startsWith('/audit')) screen = <AuditPage />;
+  else if (path.startsWith('/users')) screen = <UsersPage />;
+  else if (path.startsWith('/posts')) screen = <PostsPage />;
+
+  return (
+    <RouteCtx.Provider value={{ path, navigate }}>
+      <DataCtx.Provider value={data}>
+        {(!authed || path === '/login')
+          ? <LoginPage onLogin={login} />
+          : <Layout onLogout={logout}>{screen || <DashboardPage />}</Layout>}
+        <Toast msg={toastMsg} type="success" />
+      </DataCtx.Provider>
+    </RouteCtx.Provider>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

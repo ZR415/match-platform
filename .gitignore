@@ -1,0 +1,29 @@
+# ---------- 依赖与构建产物 ----------
+node_modules/
+dist/
+build/
+.cache/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ---------- 本机预览与编辑器 ----------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 临时文件 ----------
+*.tmp
+*.bak
+*.swp
+~$*
+
+# ---------- 演示必需文件（显式保留） ----------
+!index.html
+!index-shell.html
+!admin.html
+!src/
+!src/**
+!start.ps1
