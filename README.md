@@ -1,4 +1,4 @@
-# 搭建 Match · 产品演示 Demo
+# 搭子Match · 产品演示 Demo
 
 > 面向在校大学生的项目组队与协作平台。本仓库包含 **用户端 App** 与 **平台管理端** 两套可直接运行的前端演示程序。
 
@@ -8,19 +8,17 @@
 
 ## 一、在线预览
 
-启动本地静态服务器后即可访问：
+| 演示 | 在线体验 | 本地地址 | 说明 |
+| --- | --- | --- | --- |
+| 用户端 App | [打开演示](https://match-platform-user-app-5y34.vercel.app/) | `http://localhost:5173/user-app/` | 移动端 390 × 844 手机壳预览 |
+| 平台管理端 | [打开后台](https://match-platform-admin-console-efkt.vercel.app/) | `http://localhost:5173/admin-console/admin.html` | PC 端 1280 宽屏，需登录 |
+
+本地启动（任选其一）：
 
 ```bash
 # 在仓库根目录执行
 python -m http.server 5173
 ```
-
-| 演示 | 访问地址 | 说明 |
-| --- | --- | --- |
-| 用户端 App | https://match-platform-user-app-5y34.vercel.app/ | 移动端 390 × 844 手机壳预览 |
-| 平台管理端 | [http://localhost:5173/admin-console/admin.html](https://match-platform-admin-console-efkt.vercel.app/) | PC 端 1280 宽屏，需登录 |
-
-Windows 用户也可以直接运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start.ps1
@@ -36,12 +34,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start.ps1
 match-platform/
 ├── README.md                     # 仓库总览（当前文件）
 ├── .gitignore
-├── docs/                         # 产品与演示文档
+├── docs/                         # 产品与演示文档（描述 Demo 现状）
 │   ├── 01-产品说明.md             # 定位、目标用户、核心流程
-│   ├── 02-功能清单.md             # 用户端 / 管理端功能清单
+│   ├── 02-功能清单.md             # 用户端 / 管理端已实现功能
 │   ├── 03-页面地图.md             # 页面与路由说明
 │   ├── 04-更新日志.md             # 版本迭代记录
-│   ├── 05-前期调研报告.md         # 需求调研与竞品对标（含 35 张附图）
+│   ├── 05-前期调研报告.md         # 需求调研与竞品分析（含 6 张佐证截图）
 │   └── assets/pre-research/       # 前期调研报告附图
 ├── user-app/                     # 用户端演示（移动端）
 │   ├── README.md
@@ -50,7 +48,8 @@ match-platform/
 │   └── src/                      # 拆分源码（按模块）
 ├── admin-console/                # 平台管理端演示（PC 端）
 │   ├── README.md
-│   └── admin.html                # 单文件应用，可直接打开
+│   ├── admin.html                # 单文件应用，可直接打开
+│   └── vercel.json               # Vercel 部署重写配置
 └── scripts/
     ├── build-user-app.ps1        # 用户端源码 → index.html 组装脚本
     └── start.ps1                 # 本地静态服务器启动脚本
@@ -92,13 +91,14 @@ match-platform/
 ## 五、用户端核心流程
 
 ```
-隐私政策 → 同意并继续 → 登录 / 注册（双轨）
-                              │
-         注册 → 实名认证 → 完善资料 Step1~3 → 广场
-                              │
-广场 → 帖子详情 → 聊天 / 精准匹配 → 匹配结果 → 发起沟通
-  │                    │
-  └→ 发帖（AI 辅助）    └→ 手动筛选（意向 / 技能 / 目标）
+隐私政策 → 同意并继续
+   ├─ 登录（任意 11 位手机号 + 验证码）→ 广场
+   └─ 注册 → 实名认证 → 完善资料 Step1~3 → 广场
+
+广场 / 搜索 → 帖子详情 → 发起沟通（聊天）
+   └→ 精准匹配（来源：个人主页 / 帖子 / 手动）→ 权重设置 → 匹配结果
+
+发帖 → AI 帮我写 → 选择竞赛与标签 → 发布 → 广场同步
 ```
 
 ---
@@ -116,14 +116,25 @@ match-platform/
 
 ## 七、文档索引
 
+`docs/` 只描述当前 Demo 的实现现状，**不作为需求依据**。产品需求、分期与验收标准以 GitHub Issue 为准：
+
+- [产品全景与研发路线图 #27](https://github.com/ZR415/match-platform/issues/27) · 需求与分期总览
+- [核心需求点清单 #3](https://github.com/ZR415/match-platform/issues/3) · 需求来源
+- [核心需求解决方案与功能拆解 #4](https://github.com/ZR415/match-platform/issues/4) · 方案来源
+- [核心功能与用户故事说明文档 #9](https://github.com/ZR415/match-platform/issues/9) · F01–F75 功能索引
+
+Demo 文档：
+
 - [产品说明](docs/01-产品说明.md)
-- [功能清单](docs/02-功能清单.md)
+- [功能清单（Demo 现状）](docs/02-功能清单.md)
 - [页面地图](docs/03-页面地图.md)
 - [更新日志](docs/04-更新日志.md)
-- [前期调研报告](docs/05-前期调研报告.md) · 同步 Issue [#8](../../issues/8)
+- [前期调研报告](docs/05-前期调研报告.md) · 同步 Issue [#8](https://github.com/ZR415/match-platform/issues/8)
 
 ---
 
 ## 八、说明
 
 本项目仅用于产品演示与交流，不包含真实用户数据，也不连接任何后端服务。演示中的学校、用户、帖子、举报等信息均为虚构。
+
+Demo 与需求的关系：`docs/` 与前端代码描述“已经做出来的样子”，实际要做什么、做到什么程度，以 [Issue #27](https://github.com/ZR415/match-platform/issues/27) 及其 17 个子 Issue 为准。
