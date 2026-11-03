@@ -2,7 +2,7 @@
 
 > 面向高校学生的项目组队平台：用「多维意向 + 能力画像 + 信用体系」，把散落在群聊、校园墙和 Excel 里的组队信息，收拢成一条可检索、可匹配、可追责的链路。
 
-本仓库同时承载三件事：**产品需求体系（GitHub Issues）**、**可运行的高保真 Demo（用户端 + 管理端）**、**前期调研与产品文档（`docs/`）**。当前阶段是 MVP 需求拆解完成、Demo 已覆盖主流程。
+本仓库包含两部分：**产品需求体系（GitHub Issues）** 与 **可运行的高保真 Demo（用户端 + 管理端）**。当前阶段是 MVP 需求拆解完成、Demo 已覆盖主流程。
 
 ---
 
@@ -14,7 +14,6 @@
 - [核心流程](#核心流程)
 - [技术实现](#技术实现)
 - [仓库结构](#仓库结构)
-- [文档](#文档)
 - [说明](#说明)
 
 ---
@@ -43,9 +42,10 @@
 
 ## 需求体系
 
-需求以 GitHub Issue 为唯一来源，`docs/` 与 Demo 只描述“已经做出来的样子”。
+需求以 GitHub Issue 为唯一来源，前端代码只描述“已经做出来的样子”。
 
 - [产品全景与研发路线图 #27](https://github.com/ZR415/match-platform/issues/27) · 分期、冷启动、合规底线、研发规范（17 个子 Issue 的进度在此查看）
+- [前期调研报告 #8](https://github.com/ZR415/match-platform/issues/8) · 调研结论与竞品分析
 - [核心需求点清单 #3](https://github.com/ZR415/match-platform/issues/3) · 9 条原始需求与调研依据
 - [核心需求解决方案与功能拆解 #4](https://github.com/ZR415/match-platform/issues/4) · 现有方法对比与方案推导
 - [核心功能与用户故事说明文档 #9](https://github.com/ZR415/match-platform/issues/9) · F01–F75 功能索引
@@ -161,13 +161,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start.ps1
 match-platform/
 ├── README.md                     # 仓库总览（当前文件）
 ├── .gitignore
-├── docs/                         # 产品与演示文档（描述 Demo 现状）
-│   ├── 01-产品说明.md             # 定位、目标用户、核心流程
-│   ├── 02-功能清单.md             # 用户端 / 管理端已实现功能
-│   ├── 03-页面地图.md             # 页面与路由说明
-│   ├── 04-更新日志.md             # 版本迭代记录
-│   ├── 05-前期调研报告.md         # 调研与竞品分析（含 6 张佐证截图）
-│   └── assets/pre-research/       # 前期调研报告附图
 ├── user-app/                     # 用户端演示（移动端）
 │   ├── README.md
 │   ├── index.html                # 构建产物，可直接打开
@@ -184,20 +177,8 @@ match-platform/
 
 ---
 
-## 文档
-
-`docs/` 只描述当前 Demo 的实现现状，**不作为需求依据**。
-
-- [产品说明](docs/01-产品说明.md)
-- [功能清单（Demo 现状）](docs/02-功能清单.md)
-- [页面地图](docs/03-页面地图.md)
-- [更新日志](docs/04-更新日志.md)
-- [前期调研报告](docs/05-前期调研报告.md) · 同步 Issue [#8](https://github.com/ZR415/match-platform/issues/8)
-
----
-
 ## 说明
 
 本项目用于产品演示与交流，不包含真实用户数据，也不连接任何后端服务。演示中的学校、用户、帖子、举报等信息均为虚构。
 
-要做什么、先做哪些、做到什么程度，以 [Issue #27](https://github.com/ZR415/match-platform/issues/27) 及其 17 个子 Issue 为准；`docs/` 与前端代码只描述“已经做出来的样子”。
+要做什么、先做哪些、做到什么程度，以 [Issue #27](https://github.com/ZR415/match-platform/issues/27) 及其 17 个子 Issue 为准；前端代码只描述“已经做出来的样子”。
